@@ -157,7 +157,7 @@ export default function App() {
       </main>
 
       <footer className="footer">
-        <span>Built with React · FastAPI · Azure App Service</span>
+        <span>Built with React · FastAPI · Azure App Service test</span>
       </footer>
     </div>
   );
