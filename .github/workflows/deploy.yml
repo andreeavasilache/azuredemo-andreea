@@ -61,23 +61,17 @@ jobs:
 
       - name: Deploy via zip deploy
         env:
-          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           APP_NAME: ${{ secrets.BACKEND_APP_NAME }}
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         run: |
-          # Write profile to file to avoid shell escaping issues
           echo "$PUBLISH_PROFILE" > profile.xml
-
-          # Extract ZipDeploy credentials specifically
-          USERNAME=$(grep -oP 'publishMethod="ZipDeploy"[^>]*userName="\K[^"]+' profile.xml)
-          PASSWORD=$(grep -oP 'publishMethod="ZipDeploy"[^>]*userPWD="\K[^"]+' profile.xml)
-
-          echo "Deploying to $APP_NAME..."
-
+          USERNAME=$(grep -oP 'publishMethod="ZipDeploy".*?userName="\K[^"]+' profile.xml)
+          PASSWORD=$(grep -oP 'publishMethod="ZipDeploy".*?userPWD="\K[^"]+' profile.xml)
+          echo "Username found: ${USERNAME:0:5}..."
           curl -X POST \
             "https://${APP_NAME}.scm.azurewebsites.net/api/zipdeploy" \
             --user "${USERNAME}:${PASSWORD}" \
             -H "Content-Type: application/zip" \
             --data-binary @backend.zip \
             --fail \
-            --show-error \
-            --verbose
+            --show-error
