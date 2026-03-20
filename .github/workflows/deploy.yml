@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── Build & deploy frontend ──────────────────────────────
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +25,6 @@ jobs:
       - name: Build
         working-directory: frontend
         env:
-          # Point the built app at your backend App Service URL
           VITE_API_URL: ${{ secrets.BACKEND_URL }}
         run: npm run build
 
@@ -38,8 +36,8 @@ jobs:
           action: upload
           app_location: frontend
           output_location: dist
+          skip_app_build: true
 
-  # ── Build & deploy backend ───────────────────────────────
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
@@ -54,11 +52,26 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install -r requirements.txt
 
-      - name: Deploy to Azure App Service
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: ${{ secrets.BACKEND_APP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: backend
+      - name: Zip backend
+        run: |
+          cd backend
+          zip -r ../backend.zip .
+
+      - name: Deploy via zip deploy
+        env:
+          PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        run: |
+          # Extract username and password from publish profile XML
+          USERNAME=$(echo $PUBLISH_PROFILE | grep -oP 'userName="\K[^"]+' | head -1)
+          PASSWORD=$(echo $PUBLISH_PROFILE | grep -oP 'userPWD="\K[^"]+' | head -1)
+          APP_NAME=${{ secrets.BACKEND_APP_NAME }}
+
+          curl -X POST \
+            "https://${APP_NAME}.scm.azurewebsites.net/api/zipdeploy" \
+            -u "${USERNAME}:${PASSWORD}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @backend.zip \
+            --fail \
+            --show-error
